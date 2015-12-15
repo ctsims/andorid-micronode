@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/fragment_add_username"
+        android:hint="CommCare Username"/>
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/fragment_add_password"
+        android:hint="User Password [Collected Temporarily]"
+        android:inputType="textPassword"
+        />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/fragment_add_domain"
+        android:hint="CommCareHQ Domain"/>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right">
+        <Button xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/delete_button"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/min_button_height"
+                android:padding="@dimen/standard_spacer"
+                android:text="DELETE"
+                android:background="@android:color/transparent"
+                android:textSize="@dimen/font_size_dp_medium"
+                android:textColor="@color/dialog_button_color">
+        </Button>
+
+        <Button xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/cancel_button"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/min_button_height"
+                android:padding="@dimen/standard_spacer"
+                android:text="CANCEL"
+                android:background="@android:color/transparent"
+                android:textSize="@dimen/font_size_dp_medium"
+                android:textColor="@color/dialog_button_color">
+            </Button>
+
+        <Button xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/confirm_button"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/min_button_height"
+                android:padding="@dimen/standard_spacer"
+                android:text="OK"
+                android:background="@android:color/transparent"
+                android:textSize="@dimen/font_size_dp_medium"
+                android:textColor="@color/dialog_button_color">
+
+        </Button>
+    </LinearLayout>
+</LinearLayout>

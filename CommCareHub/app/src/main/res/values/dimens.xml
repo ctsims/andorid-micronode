@@ -1,0 +1,30 @@
+<resources>
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">16dp</dimen>
+
+    <!-- Per the design guidelines, navigation drawers should be between 240dp and 320dp:
+         https://developer.android.com/design/patterns/navigation-drawer.html -->
+    <dimen name="navigation_drawer_width">240dp</dimen>
+
+    <dimen name="font_size_dp_small">12dp</dimen>
+    <dimen name="font_size_dp_medium">15dp</dimen>
+    <dimen name="font_size_dp_large">18dp</dimen>
+    <dimen name="font_size_dp_xlarge">21dp</dimen>
+    <dimen name="font_size_dp_xlarger">23dp</dimen>
+    <dimen name="font_size_dp_xlargest">28dp</dimen>
+
+
+    <dimen name="spacer_small">5dp</dimen>
+    <dimen name="standard_spacer_half">4dp</dimen>
+    <dimen name="standard_spacer">8dp</dimen>
+    <dimen name="standard_spacer_double">16dp</dimen>
+    <dimen name="standard_spacer_large">24dp</dimen>
+    <dimen name="standard_title_margin_bottom">20dp</dimen>
+    <dimen name="min_button_height">52dp</dimen>
+    <dimen name="spacer">10dp</dimen>
+
+    <!-- Dialog button color -->
+    <color name="dialog_button_color">#2196F3</color>
+
+</resources>
