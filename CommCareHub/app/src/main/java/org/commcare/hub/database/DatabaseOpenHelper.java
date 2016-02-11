@@ -21,6 +21,8 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
      * Version History
      */
 
+    /**
+     */
     private static final int USER_DB_VERSION = 1;
 
     private Context context;

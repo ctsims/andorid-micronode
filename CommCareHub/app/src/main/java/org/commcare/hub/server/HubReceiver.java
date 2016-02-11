@@ -80,6 +80,18 @@ public class HubReceiver extends NanoHTTPD {
         } else if(uri.startsWith("/receiver")) {
             checkAuth(session);
             return responseWrap("<html><body><h1>receiver</h1></body></html>");
+        } else if(ManifestApi.handles(uri)) {
+            try {
+                return responseWrap(ManifestApi.dispatch(uri));
+            } catch (IOException e ){
+                return responseWrap("ERROR: " + e.getMessage());
+            }
+        }else if(AppDownloadApi.handles(uri)) {
+            try {
+                return responseWrap(AppDownloadApi.dispatch(uri));
+            } catch (IOException e ){
+                return responseWrap("ERROR: " + e.getMessage());
+            }
         }
         return responseWrap(basicResponse(session));
     }
@@ -133,6 +145,4 @@ public class HubReceiver extends NanoHTTPD {
         }
         return null;
     }
-
-
 }

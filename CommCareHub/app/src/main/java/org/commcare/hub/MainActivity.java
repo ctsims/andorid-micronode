@@ -1,6 +1,7 @@
 package org.commcare.hub;
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -15,8 +16,13 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import net.sqlcipher.database.SQLiteDatabase;
+
+import org.commcare.hub.application.HubApplication;
+import org.commcare.hub.apps.AppModel;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.server.ServerService;
+import org.commcare.hub.ui.ManagedAppsFragment;
 import org.commcare.hub.ui.UsersFragment;
 
 import java.io.IOException;
@@ -57,6 +63,13 @@ public class MainActivity extends AppCompatActivity
         if(position == 1) {
             fragmentManager.beginTransaction()
                     .replace(R.id.container, new UsersFragment())
+                    .commit();
+            return;
+        }
+
+        if(position == 2) {
+            fragmentManager.beginTransaction()
+                    .replace(R.id.container, new ManagedAppsFragment())
                     .commit();
             return;
         }
@@ -114,7 +127,20 @@ public class MainActivity extends AppCompatActivity
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            SQLiteDatabase database = HubApplication._().getDatabaseHandle();
+            AppModel model = AppModel.createAppModelRequest("https://www.commcarehq.org/a/esoergel/apps/api/download_ccz/?app_id=7d6847a4de64aaf561889e71b9ca1e9e");
+            model.writeToDb(database);
+            database.close();
             return true;
+        }
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.clear_pause) {
+            SQLiteDatabase database = HubApplication._().getDatabaseHandle();
+            ContentValues cv = new ContentValues();
+            cv.put("paused", Boolean.FALSE.toString());
+            database.update(AppModel.TABLE_NAME, cv, null, null);
+            database.close();
         }
 
         return super.onOptionsItemSelected(item);

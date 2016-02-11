@@ -46,7 +46,7 @@ public class ServerService implements HubService {
         }
     }
 
-    private String getIpAddress() {
+    public static String getIpAddress() {
         try {
             for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
                 NetworkInterface intf = en.nextElement();
@@ -64,6 +64,15 @@ public class ServerService implements HubService {
             e.printStackTrace();
             return "unknown";
         }
+    }
+
+    public static String getApiRoot() throws IOException{
+        String ipAddress = ServerService.getIpAddress();
+
+        if(ipAddress == null) {
+            throw new IOException("No valid IP listed for API!");
+        }
+        return "http://" + ipAddress + ":8080";
     }
 
 }
