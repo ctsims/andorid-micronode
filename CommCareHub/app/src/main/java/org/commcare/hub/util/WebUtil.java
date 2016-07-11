@@ -5,10 +5,14 @@ import android.util.Base64;
 
 import org.commcare.hub.mirror.SyncableUser;
 import org.commcare.hub.monitor.ServicesMonitor;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.UUID;
@@ -36,5 +40,22 @@ public class WebUtil {
     public static final int CONNECTION_SO_TIMEOUT = 1 * 60 * 1000;
 
 
+    public static JSONObject readJsonResponse(HttpURLConnection conn) throws JSONException, IOException {
+        BufferedReader streamReader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+        StringBuilder responseStrBuilder = new StringBuilder();
+
+        String inputStr;
+        while ((inputStr = streamReader.readLine()) != null)
+            responseStrBuilder.append(inputStr);
+        JSONObject data;
+        try {
+            data = new JSONObject(responseStrBuilder.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+            ServicesMonitor.reportMessage("Invalid JSON syncing domains: " + e.getMessage());
+            throw e;
+        }
+        return data;
+    }
 
 }

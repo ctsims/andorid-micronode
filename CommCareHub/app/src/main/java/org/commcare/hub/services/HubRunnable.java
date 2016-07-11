@@ -5,16 +5,20 @@ import org.commcare.hub.database.DatabaseUnavailableException;
 /**
  * Created by ctsims on 12/14/2015.
  */
-public abstract class HubRunnable implements Runnable {
+public abstract class HubRunnable<T extends HubThreadService> implements Runnable {
     public static int POLL_DELAY = 500;
 
     private boolean killFlagSet = false;
 
     private int status;
 
-    HubThreadService service;
+    T service;
 
-    public void connect(HubThreadService service) {
+    protected T getServiceConnector() {
+        return service;
+    }
+
+    public void connect(T service) {
         this.service = service;
     }
 
@@ -32,9 +36,11 @@ public abstract class HubRunnable implements Runnable {
             } catch (InterruptedException e) {
             }
         }
+        service.updateStatus(HubService.Status.STOPPED);
     }
 
     public void kill() {
+        service.updateStatus(HubService.Status.STOPPED);
         killFlagSet = true;
     }
 

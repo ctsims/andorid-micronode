@@ -1,13 +1,11 @@
-CREATE TABLE AppModel
+CREATE TABLE AppManifest
 (
-id INTEGER PRIMARY KEY,
-app_id,
+_id INTEGER PRIMARY KEY,
+app_guid,
+domain_id,
 app_descriptor,
 version,
-ccz_path,
-sandbox_path,
 status,
-auth_uri,
-source_uri,
-paused
+download_url,
+UNIQUE(app_guid)
 );

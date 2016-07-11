@@ -1,22 +1,13 @@
 package org.commcare.hub.server;
 
-import android.content.Intent;
-
-import net.sqlcipher.database.SQLiteDatabase;
-import net.sqlcipher.database.SQLiteException;
-
-import org.commcare.hub.application.HubApplication;
-import org.commcare.hub.apps.AppModel;
+import org.commcare.hub.apps.AppAssetModel;
 import org.commcare.hub.apps.AppUtils;
 import org.commcare.hub.util.StreamsUtil;
-import org.json.JSONException;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URL;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,7 +29,7 @@ public class AppDownloadApi {
         int appId = Integer.valueOf(m.group(1));
         String relativePath = m.group(2);
 
-        AppModel app = AppUtils.getAppModel(appId);
+        AppAssetModel app = AppUtils.getAppModel(appId);
 
         File appFile = new File(app.getSandboxPath(), relativePath);
 
@@ -49,7 +40,7 @@ public class AppDownloadApi {
         return StreamsUtil.loadToString(new BufferedInputStream(new FileInputStream(appFile)));
     }
 
-    public static String getProfileURI(String apiRoot, AppModel app) {
+    public static String getProfileURI(String apiRoot, AppAssetModel app) {
         return apiRoot + API_STEP + app.getRowId() + "/profile.ccpr";
     }
 }

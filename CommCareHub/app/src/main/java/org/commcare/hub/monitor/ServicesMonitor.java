@@ -12,6 +12,7 @@ public class ServicesMonitor {
     static Queue<String> messages = new LinkedList<String>();
 
     public synchronized static void reportMessage(String message) {
+        System.out.println(message);
         if(messages.size() > MESSAGES_LENGTH) {
             messages.remove();
         }

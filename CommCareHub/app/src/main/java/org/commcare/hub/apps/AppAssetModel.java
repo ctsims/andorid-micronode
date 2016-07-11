@@ -5,14 +5,15 @@ import android.content.ContentValues;
 import net.sqlcipher.Cursor;
 import net.sqlcipher.database.SQLiteDatabase;
 
-import java.io.File;
-import java.util.Date;
+import org.commcare.hub.util.DbUtil;
 
 /**
+ * An app asset represents a physical binary CCZ file and/or a request to download or process one
+ *
  * Created by ctsims on 2/11/2016.
  */
-public class AppModel {
-    public static final String TABLE_NAME = "AppModel";
+public class AppAssetModel {
+    public static final String TABLE_NAME = "AppAsset";
 
     public boolean isPaused() {
         return paused;
@@ -27,19 +28,13 @@ public class AppModel {
         this.appSandboxPath = unzippedAppPath;
     }
 
-    public void setProcessedData(int versionNum, String updateUrl, String uniqueid, String name) {
+    public void setProcessedData(int versionNum, String updateUrl) {
         this.appVersion = versionNum;
         this.authUri = updateUrl;
-        this.appId = uniqueid;
-        this.name = name;
     }
 
-    public String getAppName() {
-        return name;
-    }
-
-    public static AppModel getRow(int appId, SQLiteDatabase db) {
-        Cursor c = db.query(AppModel.TABLE_NAME, null,
+    public static AppAssetModel getRow(int appId, SQLiteDatabase db) {
+        Cursor c = db.query(AppAssetModel.TABLE_NAME, null,
                 "id = ?", new String[] {String.valueOf(appId)}, null, null, null);
 
         try {
@@ -59,12 +54,12 @@ public class AppModel {
         Processed
     }
 
-    private AppModel() {
+    private AppAssetModel() {
 
     }
 
     private long rowId;
-    private String appId;
+    private int appManifest;
     private int appVersion;
     private String appArchivePath;
     private String appSandboxPath;
@@ -72,15 +67,16 @@ public class AppModel {
     private String authUri;
     private String sourceUri;
 
-    String name;
     private boolean paused = false;
 
 
-    public static AppModel createAppModelRequest(String sourceUri) {
-        AppModel m = new AppModel();
+    public static AppAssetModel createAppModelRequest(String sourceUri, int appVersion, int appManifest) {
+        AppAssetModel m = new AppAssetModel();
         m.sourceUri = sourceUri;
         m.status = Status.Requested;
         m.paused = false;
+        m.appVersion = appVersion;
+        m.appManifest = appManifest;
         m.rowId = -1;
         return m;
     }
@@ -91,18 +87,17 @@ public class AppModel {
         this.appArchivePath = archivePath;
     }
 
-    public static AppModel fromDb(Cursor c) {
-        AppModel app = new AppModel();
+    public static AppAssetModel fromDb(Cursor c) {
+        AppAssetModel app = new AppAssetModel();
 
         app.rowId = c.getInt(c.getColumnIndexOrThrow("id"));
-        app.appId= c.getString(c.getColumnIndexOrThrow("app_id"));
+        app.appManifest= c.getInt(c.getColumnIndexOrThrow("app_manifest_id"));
         app.appVersion = c.getInt(c.getColumnIndexOrThrow("version"));
         app.appArchivePath = c.getString(c.getColumnIndexOrThrow("ccz_path"));
         app.appSandboxPath = c.getString(c.getColumnIndexOrThrow("sandbox_path"));
         app.status = Status.valueOf(c.getString(c.getColumnIndexOrThrow("status")));
         app.authUri = c.getString(c.getColumnIndexOrThrow("auth_uri"));
         app.sourceUri = c.getString(c.getColumnIndexOrThrow("source_uri"));
-        app.name = c.getString(c.getColumnIndexOrThrow("app_descriptor"));
         app.paused = Boolean.valueOf(c.getString(c.getColumnIndexOrThrow("paused")));
 
 
@@ -112,14 +107,13 @@ public class AppModel {
     public void writeToDb(SQLiteDatabase database) {
         ContentValues cv = new ContentValues();
 
-        cv.put("app_id", appId);
+        cv.put("app_manifest_id", appManifest);
         cv.put("version", appVersion);
         cv.put("ccz_path", appArchivePath);
         cv.put("sandbox_path", appSandboxPath);
         cv.put("status", status.name());
         cv.put("auth_uri", authUri);
         cv.put("source_uri", sourceUri);
-        cv.put("app_descriptor", name);
         cv.put("paused", Boolean.toString(paused));
 
 
@@ -135,8 +129,8 @@ public class AppModel {
         return rowId;
     }
 
-    public String getAppId() {
-        return appId;
+    public int getAppManifestId() {
+        return appManifest;
     }
 
     public int getVersion() {
@@ -163,7 +157,22 @@ public class AppModel {
         return sourceUri;
     }
 
+    private String guid;
+    private String name;
 
+    public void linkToManifest(SQLiteDatabase db) {
+        Cursor c = db.query(DbUtil.TABLE_APP_MANIFEST, new String[] {"app_guid", "app_descriptor"}, "_id = (? + 0)", new String[] { String.valueOf(this.getAppManifestId())}, null, null, null);
+        if(c.moveToFirst()) {
+            guid = c.getString(c.getColumnIndexOrThrow("app_guid"));
+            name = c.getString(c.getColumnIndexOrThrow("app_descriptor"));
+        }
+    }
 
+    public String getAppManifestGuid() {
+        return guid;
+    }
 
+    public String getAppName() {
+        return name;
+    }
 }

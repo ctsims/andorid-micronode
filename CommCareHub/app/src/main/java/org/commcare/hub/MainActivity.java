@@ -2,6 +2,7 @@ package org.commcare.hub;
 
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -19,7 +20,7 @@ import android.widget.TextView;
 import net.sqlcipher.database.SQLiteDatabase;
 
 import org.commcare.hub.application.HubApplication;
-import org.commcare.hub.apps.AppModel;
+import org.commcare.hub.apps.AppAssetModel;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.server.ServerService;
 import org.commcare.hub.ui.ManagedAppsFragment;
@@ -39,6 +40,8 @@ public class MainActivity extends AppCompatActivity
      * Used to store the last screen title. For use in {@link #restoreActionBar()}.
      */
     private CharSequence mTitle;
+
+    public static final int RESULT_LOGIN = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,6 +97,9 @@ public class MainActivity extends AppCompatActivity
             case 3:
                 mTitle = getString(R.string.title_section3);
                 break;
+            case 4:
+                mTitle = "Connect to HQ";
+                break;
         }
     }
 
@@ -127,20 +133,27 @@ public class MainActivity extends AppCompatActivity
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
-            SQLiteDatabase database = HubApplication._().getDatabaseHandle();
-            AppModel model = AppModel.createAppModelRequest("https://www.commcarehq.org/a/esoergel/apps/api/download_ccz/?app_id=7d6847a4de64aaf561889e71b9ca1e9e");
-            model.writeToDb(database);
-            database.close();
+//            SQLiteDatabase database = HubApplication._().getDatabaseHandle();
+//            AppAssetModel model = AppAssetModel.createAppModelRequest("https://www.commcarehq.org/a/corpora/apps/api/download_ccz/?app_id=4c32e93d1b2840af035f68c1f6d9f890");
+//            model.writeToDb(database);
+//            database.close();
+
+            Intent i = new Intent(this,LoginActivity.class);
+            this.startActivityForResult(i, RESULT_LOGIN);
             return true;
         }
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.clear_pause) {
-            SQLiteDatabase database = HubApplication._().getDatabaseHandle();
-            ContentValues cv = new ContentValues();
-            cv.put("paused", Boolean.FALSE.toString());
-            database.update(AppModel.TABLE_NAME, cv, null, null);
-            database.close();
+
+            Intent i = new Intent(this,DomainViewActivity.class);
+            this.startActivityForResult(i, RESULT_LOGIN);
+            return true;
+//            SQLiteDatabase database = HubApplication._().getDatabaseHandle();
+//            ContentValues cv = new ContentValues();
+//            cv.put("paused", Boolean.FALSE.toString());
+//            database.update(AppAssetModel.TABLE_NAME, cv, null, null);
+//            database.close();
         }
 
         return super.onOptionsItemSelected(item);

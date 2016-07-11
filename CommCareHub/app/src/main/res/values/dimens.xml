@@ -26,5 +26,7 @@
 
     <!-- Dialog button color -->
     <color name="dialog_button_color">#2196F3</color>
+    <dimen name="fab_margin">16dp</dimen>
+    <dimen name="appbar_padding_top">8dp</dimen>
 
 </resources>

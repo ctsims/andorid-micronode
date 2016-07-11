@@ -46,6 +46,12 @@ public class ServerService implements HubService {
         }
     }
 
+    @Override
+    public void restartService() {
+        stopService();
+        startService();
+    }
+
     public static String getIpAddress() {
         try {
             for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {

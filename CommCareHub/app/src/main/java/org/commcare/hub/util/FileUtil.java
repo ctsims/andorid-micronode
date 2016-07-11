@@ -4,6 +4,7 @@ import android.os.Environment;
 import android.util.Log;
 
 import org.commcare.hub.application.HubApplication;
+import org.commcare.hub.monitor.ServicesMonitor;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -12,6 +13,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 /**
@@ -39,7 +41,7 @@ public class FileUtil {
     public static void unzipArchiveToFolder(File archiveFile, File destinationFolder) throws IOException {
         Log.d("FileUtil", "Unzipping archive '" + archiveFile + "' to  '" + destinationFolder + "'");
 
-        ZipFile zipfile = new ZipFile(archiveFile);
+        ZipFile zipfile = new ZipFile(archiveFile);;
         for (Enumeration e = zipfile.entries(); e.hasMoreElements(); ) {
             ZipEntry entry = (ZipEntry)e.nextElement();
 

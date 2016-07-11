@@ -45,7 +45,12 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
             String[] assets = context.getAssets().list(DB_ASSETS);
             for(String asset : assets) {
                 String assetString = loadAssetAsString(DB_ASSETS + "/" + asset);
-                database.execSQL(assetString);
+                String[] statements = assetString.split(";");
+                for(String statement : statements) {
+                    if(!"".equals(statement.trim())) {
+                        database.execSQL(statement);
+                    }
+                }
             }
 
             database.setVersion(USER_DB_VERSION);
@@ -67,6 +72,7 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
     }
 
 }

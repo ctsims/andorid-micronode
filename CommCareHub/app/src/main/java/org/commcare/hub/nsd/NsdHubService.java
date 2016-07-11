@@ -16,6 +16,9 @@ public class NsdHubService implements HubService {
     Context context;
     Status status = Status.WAITING;
 
+    public static final String SERVICE_TYPE = "_http._tcp.";
+    public static final String SERVICE_NAME = "commcare_micronode";
+
     public NsdHubService(Context context) {
         this.context = context;
     }
@@ -29,8 +32,8 @@ public class NsdHubService implements HubService {
     @Override
     public void startService() {
         NsdServiceInfo serviceInfo  = new NsdServiceInfo();
-        serviceInfo.setServiceName("CommCare MicroNode");
-        serviceInfo.setServiceType("_http._tcp.");
+        serviceInfo.setServiceName(SERVICE_NAME);
+        serviceInfo.setServiceType(SERVICE_TYPE);
         serviceInfo.setPort(8080);
 
         NsdManager mNsdManager = (NsdManager)context.getSystemService(Context.NSD_SERVICE);
@@ -67,6 +70,11 @@ public class NsdHubService implements HubService {
 
     @Override
     public void stopService() {
+
+    }
+
+    @Override
+    public void restartService() {
 
     }
 }

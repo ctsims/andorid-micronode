@@ -1,23 +1,19 @@
 package org.commcare.hub.apps;
 
 import android.content.Context;
-import android.util.Base64;
 
 import net.sqlcipher.Cursor;
 import net.sqlcipher.database.SQLiteDatabase;
 
 import org.commcare.hub.application.HubApplication;
 import org.commcare.hub.database.DatabaseUnavailableException;
-import org.commcare.hub.mirror.SyncableUser;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.services.HubRunnable;
 import org.commcare.hub.util.FileUtil;
 import org.commcare.hub.util.StreamsUtil;
 import org.commcare.hub.util.WebUtil;
 import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
-import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -29,6 +25,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.UUID;
+import java.util.zip.ZipException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -42,7 +39,7 @@ import javax.xml.xpath.XPathFactory;
  *
  * Created by ctsims on 12/14/2015.
  */
-public class AppSyncThread extends HubRunnable {
+public class AppSyncThread extends HubRunnable{
     Context context;
 
     public AppSyncThread(Context context) {
@@ -53,17 +50,16 @@ public class AppSyncThread extends HubRunnable {
         SQLiteDatabase database = HubApplication._().getDatabaseHandle();
 
         try {
-            Cursor c = database.query(AppModel.TABLE_NAME, null, null, null, null, null, null);
-            AppModel actionable = null;
+            Cursor c = database.query(AppAssetModel.TABLE_NAME, null, null, null, null, null, null);
+            AppAssetModel actionable = null;
             for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
-                AppModel app = AppModel.fromDb(c);
+                AppAssetModel app = AppAssetModel.fromDb(c);
 
-                if(app.getStatus() != AppModel.Status.Processed && !app.isPaused()) {
+                if(app.getStatus() != AppAssetModel.Status.Processed && !app.isPaused()) {
                     actionable = app;
                 }
             }
             c.close();
-
 
             if (actionable == null) {
                 return;
@@ -86,17 +82,17 @@ public class AppSyncThread extends HubRunnable {
 
     //HttpURLConnection
 
-    private void fetchAppArchive(AppModel actionable, SQLiteDatabase database) {
+    private void fetchAppArchive(AppAssetModel actionable, SQLiteDatabase database) {
         String localFileUri = fetchAppCCZ(actionable.getSourceUri(), database);
         if(localFileUri != null) {
             actionable.setArchiveFetched(localFileUri);
             actionable.writeToDb(database);
-            ServicesMonitor.reportMessage("Archive fetch successful for " + actionable.getAppId());
+            ServicesMonitor.reportMessage("Archive fetch successful for " + actionable.getAppManifestId());
         }
 
     }
 
-    private void unzZipAppArchive(AppModel actionable, SQLiteDatabase database) {
+    private void unzZipAppArchive(AppAssetModel actionable, SQLiteDatabase database) {
         String guid = UUID.randomUUID().toString();
 
         File tempRootPath = new File(FileUtil.path(FileUtil.TEMP_ROOT), guid);
@@ -105,12 +101,20 @@ public class AppSyncThread extends HubRunnable {
             tempRootPath.mkdirs();
         }
         try {
-            FileUtil.unzipArchiveToFolder(new File(actionable.getArchivePath()), tempRootPath);
+            try {
+                FileUtil.unzipArchiveToFolder(new File(actionable.getArchivePath()), tempRootPath);
+            } catch(ZipException ze) {
+                //Bad Zip file
+                ServicesMonitor.reportMessage("Bad zip file download at " + tempRootPath);
+                //TOOD: Set state as corrupt and allow redownload
+                return;
+            }
 
+            String appId = getAppIdforModel(actionable, database);
 
             processUnzippedAppArchive(actionable, tempRootPath);
     
-            File appsRoot = new File(FileUtil.path(FileUtil.APP_ROOT), actionable.getAppId());
+            File appsRoot = new File(FileUtil.path(FileUtil.APP_ROOT), appId);
             if(!appsRoot.exists()) {
                 appsRoot.mkdirs();
             }
@@ -129,8 +133,9 @@ public class AppSyncThread extends HubRunnable {
 
             actionable.setAppProcessed(appRoot.getAbsolutePath());
             actionable.writeToDb(database);
+            this.getServiceConnector().queueBroadcast(new AppAssetBroadcast(actionable.getAppManifestId()));
 
-            ServicesMonitor.reportMessage("Succesfully unpackaged " + actionable.getAppId());
+            ServicesMonitor.reportMessage("Succesfully unpackaged " + appId);
 
             return;
         } catch (IOException ioe) {
@@ -139,18 +144,32 @@ public class AppSyncThread extends HubRunnable {
         }
     }
 
+    public static final String MANIFEST_TABLE = "AppManifest";
+
+    private String getAppIdforModel(AppAssetModel actionable, SQLiteDatabase database) {
+        int id = actionable.getAppManifestId();
+        Cursor c = database.query(MANIFEST_TABLE,new String[] {"app_guid"},"_id = ?",new String[] {String.valueOf(id)}, null, null, null);
+        if(c.getCount() == 0) {
+            throw new RuntimeException("Missing manifest!");
+        }
+        c.moveToFirst();
+        String guid = c.getString(c.getColumnIndexOrThrow("app_guid"));
+        c.close();
+        return guid;
+    }
+
     private void clearFolder(File appRoot) throws IOException{
         FileUtil.deleteFileOrDir(appRoot);
     }
 
-    private void processAndReport(IOException ioe, AppModel actionable, SQLiteDatabase database) {
+    private void processAndReport(IOException ioe, AppAssetModel actionable, SQLiteDatabase database) {
         ioe.printStackTrace();
         ServicesMonitor.reportMessage("Serious Error unzipping archive!\n" + ioe.getMessage());
         actionable.setPaused(true);
         actionable.writeToDb(database);
     }
 
-    private void processUnzippedAppArchive(AppModel actionable, File tempRootPath) throws IOException{
+    private void processUnzippedAppArchive(AppAssetModel actionable, File tempRootPath) throws IOException{
         File profileFile = new File(tempRootPath, "profile.ccpr");
         if(!profileFile.exists()) {
             throw new FileNotFoundException("CommCare Archive has no profile");
@@ -185,7 +204,7 @@ public class AppSyncThread extends HubRunnable {
 
             String uniqueid = (String)xpath.evaluate("/profile/@uniqueid", profile, XPathConstants.STRING);
 
-            actionable.setProcessedData(versionNum, updateUrl, uniqueid, name);
+            actionable.setProcessedData(versionNum, updateUrl);
 
         } catch (ParserConfigurationException e) {
             throw new IOException("Parser Error reading profile file", e);
@@ -241,4 +260,6 @@ public class AppSyncThread extends HubRunnable {
         }
         return null;
     }
+
+
 }
