@@ -102,7 +102,7 @@ public class UsersFragment extends Fragment implements AddUserDialogFragment.Use
         SQLiteDatabase database = HubApplication._().getDatabaseHandle();
         user.writeToDb(database);
         adapter.update();
-        database.close();
+        //database.close();
     }
 
     @Override
@@ -110,7 +110,7 @@ public class UsersFragment extends Fragment implements AddUserDialogFragment.Use
         SQLiteDatabase database = HubApplication._().getDatabaseHandle();
         user.removeFromDb(database);
         adapter.update();
-        database.close();
+        //database.close();
     }
 
     @Override

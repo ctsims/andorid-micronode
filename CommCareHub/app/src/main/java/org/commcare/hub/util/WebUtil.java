@@ -58,4 +58,8 @@ public class WebUtil {
         return data;
     }
 
+
+    public static final String getAPIRoot() {
+        return "https://www.commcarehq.org/";
+    }
 }

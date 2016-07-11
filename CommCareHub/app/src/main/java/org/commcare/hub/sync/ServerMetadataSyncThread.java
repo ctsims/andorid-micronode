@@ -108,16 +108,13 @@ public class ServerMetadataSyncThread extends HubRunnable<ServerMetadataSyncServ
         }
     }
 
-    public static final String STATUS_NEW ="new";
-    public static final String STATUS_SYNCED = "synced";
-
     private void syncDomains(ArrayList<String> domains) {
         SQLiteDatabase database = HubApplication._().getDatabaseHandle();
 
         for(String s : domains) {
             ContentValues cv = new ContentValues();
             cv.put("domain_guid", s);
-            cv.put("status", STATUS_NEW);
+            cv.put("pending_sync_request", "apps");
             database.insertWithOnConflict("DomainList", null, cv, SQLiteDatabase.CONFLICT_IGNORE);
         }
     }

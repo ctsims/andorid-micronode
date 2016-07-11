@@ -118,10 +118,11 @@ public class DomainViewActivity extends HubActivity {
 
     private void updateLiveDomain(int id) {
         this.domainId = id;
-        Fragment page = getCurrentPage();
-        if (page != null) {
-            page.setArguments(getDomainArguments());
-        }
+//        Fragment page = getCurrentPage();
+//        if (page != null) {
+//            page.setArguments(getDomainArguments());
+//        }
+        mSectionsPagerAdapter.notifyDataSetChanged();
     }
 
 
@@ -177,6 +178,16 @@ public class DomainViewActivity extends HubActivity {
             }
             return null;
         }
+
+        @Override
+        public int getItemPosition(Object object) {
+            if (object instanceof Fragment) {
+                ((Fragment)object).setArguments(getDomainArguments());
+            }
+            //don't return POSITION_NONE, avoid fragment recreation.
+            return super.getItemPosition(object);
+        }
+
 
         @Override
         public int getCount() {

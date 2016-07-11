@@ -2,6 +2,7 @@ package org.commcare.hub.util;
 
 import android.content.ContentValues;
 import android.preference.PreferenceManager;
+import android.support.v4.util.Pair;
 import android.widget.ProgressBar;
 
 import net.sqlcipher.Cursor;
@@ -11,6 +12,7 @@ import net.sqlcipher.database.SQLiteException;
 import org.commcare.hub.application.HubApplication;
 import org.commcare.hub.apps.AppAssetBroadcast;
 import org.commcare.hub.apps.AppAssetModel;
+import org.commcare.hub.mirror.SyncableUser;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.services.HubService;
 
@@ -24,18 +26,29 @@ import java.util.List;
 public class DbUtil {
 
     public static final String TABLE_APP_MANIFEST = "AppManifest";
+    public static final String TABLE_USER_LIST = "MobileUser";
 
-    public static void upsertRow(SQLiteDatabase db, String table, ContentValues cv, String uniqueId) {
-        upsertRow(db, table, cv, uniqueId, "_id");
+    /**
+     * @return true if a row was added, false if one was updated
+     */
+    public static Pair<Long, Boolean> upsertRow(SQLiteDatabase db, String table, ContentValues cv, String uniqueId) {
+        return upsertRow(db, table, cv, uniqueId, "_id");
     }
 
-    public static void upsertRow(SQLiteDatabase db, String table, ContentValues cv, String uniqueId, String primaryKey) {
+    /**
+     * @return true if a row was added, false if one was updated
+     */
+    public static Pair<Long, Boolean> upsertRow(SQLiteDatabase db, String table, ContentValues cv, String uniqueId, String primaryKey) {
         Cursor c = db.query(table, new String[] {primaryKey}, uniqueId + " = ?", new String[] {cv.getAsString(uniqueId)}, null, null, null);
         try {
             if (c.getCount() == 0) {
-                db.insert(table, null, cv);
+                long newId = db.insert(table, null, cv);
+                return new Pair<>(newId, true);
             } else {
+                c.moveToFirst();
+                long updatedId = c.getLong(c.getColumnIndexOrThrow(primaryKey));
                 db.update(table, cv, uniqueId + " = ?", new String[]{cv.getAsString(uniqueId)});
+                return new Pair<>(updatedId, false);
             }
         }finally {
             c.close();
@@ -54,7 +67,20 @@ public class DbUtil {
         } finally {
             c.close();
         }
+    }
 
+    public static List<SyncableUser> getSyncableUserForWebUser(SQLiteDatabase db, int webUserID) {
+        Cursor c = db.query(SyncableUser.TABLE_NAME, null, "username = (? + 0)", new String[] {String.valueOf(webUserID)}, null, null, null);
+        try {
+            ArrayList<SyncableUser> models = new ArrayList();
+
+            while (c.moveToNext()) {
+                models.add(SyncableUser.fromDb(c));
+            }
+            return models;
+        } finally {
+            c.close();
+        }
     }
 
     public static void requestManifestAsset(SQLiteDatabase db, int manifestId, int version,

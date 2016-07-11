@@ -3,30 +3,30 @@ package org.commcare.hub.domain;
 import android.content.ContentValues;
 import android.content.Context;
 import android.support.v4.util.Pair;
+import android.util.Base64;
 
 import net.sqlcipher.Cursor;
 import net.sqlcipher.database.SQLiteDatabase;
 
 import org.commcare.hub.application.HubApplication;
+import org.commcare.hub.apps.MobileUserModelBroadcast;
 import org.commcare.hub.database.DatabaseUnavailableException;
+import org.commcare.hub.events.HubEventBroadcast;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.services.HubRunnable;
-import org.commcare.hub.sync.*;
-import org.commcare.hub.sync.ServerMetadataSyncService;
 import org.commcare.hub.util.DbUtil;
+import org.commcare.hub.util.InvalidConfigException;
+import org.commcare.hub.util.ProcessingException;
 import org.commcare.hub.util.WebUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.Authenticator;
 import java.net.HttpURLConnection;
 import java.net.PasswordAuthentication;
 import java.net.URL;
-import java.util.ArrayList;
 
 /**
  *
@@ -44,36 +44,39 @@ public class DomainSyncThread extends HubRunnable {
 
     public void runInternal() throws DatabaseUnavailableException {
         db = HubApplication._().getDatabaseHandle();
+        Pair<String, Integer> domainData = null;
 
-        Cursor c = db.query(TABLE_DOMAIN_LIST, new String[]{"domain_guid", "id"}, "status = ?", new String[] {"new"}, null, null, null);
+        Cursor c = db.query(TABLE_DOMAIN_LIST, new String[]{"domain_guid", "id", "pending_sync_request"}, "pending_sync_request != ?", new String[] {"synced"}, null, null, null);
         try {
-            Pair<String, Integer> guid = null;
-            if (c.getCount() > 0) {
-                c.moveToFirst();
-                guid = new Pair<>(c.getString(c.getColumnIndex("domain_guid")), c.getInt(c.getColumnIndex("id")));
-            }
-
-            if (guid == null) {
+            if(!c.moveToFirst() ){
                 return;
             }
+            domainData = new Pair<>(c.getString(c.getColumnIndex("domain_guid")), c.getInt(c.getColumnIndex("id")));
+            String nextSyncRequest = c.getString(c.getColumnIndex("pending_sync_request"));
 
-            System.out.println("Performing domain sync for domain: " + guid);
+            System.out.println("Performing domain sync for domain: " + domainData.first);
 
-            fetchAndSyncDomain(guid);
+            if("apps".equals(nextSyncRequest)) {
+                fetchAndSyncApps(domainData);
+            } else if("users".equals(nextSyncRequest)) {
+                fetchAndSyncUsers(domainData);
+            }
+        } catch (ProcessingException e) {
+            ServicesMonitor.reportMessage(e.getMessage());
+        } catch (InvalidConfigException e) {
+            ContentValues cv = new ContentValues();
+            cv.put("pending_sync_request", "synced");
+            db.update(TABLE_DOMAIN_LIST, cv, "domain_guid = ?", new String[]{domainData.first});
         } finally {
             c.close();
-            db.close();
         }
     }
 
-    private void fetchAndSyncDomain(Pair<String, Integer> domainData) {
-        String guid = domainData.first;
+    private JSONObject fetch(String uri) throws ProcessingException, InvalidConfigException {
         final Pair<String, String> credentials = HubApplication._().getCredentials();
 
-        String template = "https://www.commcarehq.org/a/" + guid + "/apps/api/list_apps/";
-        if("".equals(credentials.first)) {
-            ServicesMonitor.reportMessage("No user authentication available");
-            return;
+        if ("".equals(credentials.first)) {
+            throw new ProcessingException("No user authentication available");
         }
 
         Authenticator.setDefault(new Authenticator() {
@@ -82,45 +85,126 @@ public class DomainSyncThread extends HubRunnable {
             }
         });
 
-        try {
 
-            URL url = new URL(template);
+
+        try {
+            URL url = new URL(uri);
             HttpURLConnection conn = (HttpURLConnection)url.openConnection();
+
+            conn.setRequestProperty("Authorization", "basic " +
+                    Base64.encodeToString((credentials.first + ":" + credentials.second).getBytes(), Base64.DEFAULT));
 
             WebUtil.setupGetConnection(conn);
 
             int response = conn.getResponseCode();
 
             if (response >= 500) {
-                ServicesMonitor.reportMessage("Error logging in user" + conn.getResponseMessage());
-                return;
+                throw new ProcessingException("Error logging in user" + conn.getResponseMessage());
             } else if (response >= 400) {
-                ServicesMonitor.reportMessage("Auth error syncing user " + conn.getResponseMessage());
-                return;
+                if(conn.getResponseMessage().contains("UNAUTHORIZED")) {
+                    throw new InvalidConfigException("Domain is not capable of API requests");
+                }
+                throw new ProcessingException("Auth error syncing user " + conn.getResponseMessage());
             } else if (response == 200) {
                 try {
-                    JSONObject data = WebUtil.readJsonResponse(conn);
-                    JSONArray appList = data.getJSONArray("applications");
-                    for(int i = 0 ; i < appList.length(); ++i) {
-                        processApplication(appList.getJSONObject(i), domainData.second);
-                    }
-
-
-                    ContentValues cv = new ContentValues();
-                    cv.put("status", "synced");
-                    db.update(TABLE_DOMAIN_LIST, cv, "domain_guid = ?", new String[]{guid});
-                    System.out.println("Synced domain: " + guid);
-                }catch (JSONException e) {
-                    e.printStackTrace();
-                    ServicesMonitor.reportMessage("invalid domains response: " + e.getMessage());
-                    return;
+                    return WebUtil.readJsonResponse(conn);
+                } catch (JSONException e) {
+                    throw new ProcessingException("invalid domains response: " + e.getMessage());
                 }
+            } else {
+                throw new ProcessingException("Unexpcted web response: " + response);
             }
-        } catch(IOException e) {
-            ServicesMonitor.reportMessage("IO Exception syncing user metadata: " + e.getMessage());
-            e.printStackTrace();
-            return;
+        } catch (IOException e) {
+            throw new ProcessingException("IO Exception syncing user metadata: " + e.getMessage());
         }
+    }
+
+
+    private void fetchAndSyncUsers(Pair<String, Integer> domainData) throws ProcessingException, InvalidConfigException {
+        String guid = domainData.first;
+
+        String nextQuery ="?limit=20&format=json";
+
+        while(nextQuery != null) {
+            try {
+                String uri = WebUtil.getAPIRoot() + "a/" + domainData.first +
+                        "/api/v0.4/user/" + nextQuery;
+                Pair<String, JSONArray> results = parseTastyPieResult(fetch(uri));
+
+                JSONArray list = results.second;
+                for (int i = 0; i < list.length(); ++i) {
+                    processUser(list.getJSONObject(i), domainData.second);
+                }
+                nextQuery = results.first;
+            } catch (JSONException e) {
+                throw new ProcessingException(e.getMessage());
+            }
+        }
+
+
+        ContentValues cv = new ContentValues();
+        cv.put("pending_sync_request", "synced");
+        db.update(TABLE_DOMAIN_LIST, cv, "domain_guid = ?", new String[]{guid});
+        System.out.println("Synced domain: " + guid);
+    }
+
+    private void processUser(JSONObject jsonObject, int domainId) throws JSONException {
+        ContentValues cv = new ContentValues();
+        cv.put("user_id", jsonObject.getString("id"));
+        cv.put("domain_id", domainId);
+        cv.put("username", jsonObject.getString("username"));
+        String firstName = jsonObject.getString("first_name");
+        String lastName = jsonObject.getString("last_name");
+
+        String readableName = jsonObject.getString("username").split("@")[0];
+
+        if (!"".equals(firstName) || !"".equals(lastName)) {
+            readableName = firstName + " " + lastName;
+        }
+
+        cv.put("readable_name", readableName);
+
+        HubEventBroadcast.EventType type = HubEventBroadcast.EventType.Addition;
+        Pair<Long, Boolean> upsertResult = DbUtil.upsertRow(db, DbUtil.TABLE_USER_LIST, cv, "user_id");
+
+        if(!upsertResult.second) {
+            type = HubEventBroadcast.EventType.Update;
+        }
+
+        this.getServiceConnector().queueBroadcast(new MobileUserModelBroadcast(domainId, upsertResult.first, type));
+    }
+
+    private Pair<String, JSONArray> parseTastyPieResult(JSONObject data) throws JSONException {
+        String nextDataUri = data.getJSONObject("meta").getString("next");
+        if("null".equals(nextDataUri)) {
+            nextDataUri = null;
+        }
+        JSONArray values = data.getJSONArray("objects");
+        return new Pair<>(nextDataUri, values);
+    }
+
+
+    private void fetchAndSyncApps(Pair<String, Integer> domainData) throws ProcessingException, InvalidConfigException {
+        String guid = domainData.first;
+
+        String template = "https://www.commcarehq.org/a/" + guid + "/apps/api/list_apps/";
+
+        JSONObject data = fetch(template);
+
+        try {
+            JSONArray appList = data.getJSONArray("applications");
+            for (int i = 0; i < appList.length(); ++i) {
+                processApplication(appList.getJSONObject(i), domainData.second);
+            }
+        } catch (JSONException e) {
+            throw new ProcessingException(e.getMessage());
+        }
+
+
+        ContentValues cv = new ContentValues();
+        cv.put("pending_sync_request", "users");
+        db.update(TABLE_DOMAIN_LIST, cv, "domain_guid = ?", new String[]{guid});
+        System.out.println("Synced domain: " + guid);
     }
 
     private void processApplication(JSONObject application, int id) throws JSONException {

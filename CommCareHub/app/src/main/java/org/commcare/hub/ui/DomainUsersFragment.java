@@ -17,18 +17,26 @@ import android.widget.ListView;
 
 import net.sqlcipher.database.SQLiteDatabase;
 
+import org.commcare.hub.DomainViewActivity;
 import org.commcare.hub.MainActivity;
 import org.commcare.hub.R;
 import org.commcare.hub.application.HubApplication;
+import org.commcare.hub.apps.AppAssetBroadcast;
+import org.commcare.hub.apps.MobileUserModelBroadcast;
 import org.commcare.hub.database.DatabaseUnavailableException;
+import org.commcare.hub.events.HubBroadcastListener;
+import org.commcare.hub.events.HubEventBroadcast;
 import org.commcare.hub.mirror.SyncableUser;
 
 /**
  * Created by ctsims on 12/14/2015.
  */
-public class DomainUsersFragment extends Fragment implements AddUserDialogFragment.UserDialogFragmentListener, AdapterView.OnItemClickListener {
-    UserListAdapter adapter;
+public class DomainUsersFragment extends Fragment implements HubBroadcastListener {
+    DomainUserListAdapter adapter;
     Activity activity;
+
+    int domainId = -1;
+    ListView list;
 
     public DomainUsersFragment() {
         // Indicate that this fragment would like to influence the set of actions in the action bar.
@@ -36,20 +44,46 @@ public class DomainUsersFragment extends Fragment implements AddUserDialogFragme
     }
 
     @Override
+    public void setArguments(Bundle bundle) {
+        domainId = bundle.getInt(DomainViewActivity.EXTRA_DOMAIN_ID);
+        if(adapter != null) {
+            adapter.setDomainId(domainId);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_users_to_sync, container, false);
-        ListView list = (ListView)rootView.findViewById(R.id.user_list);
+        View rootView = inflater.inflate(R.layout.fragment_apps_to_sync, container, false);
+        list = (ListView)rootView.findViewById(R.id.app_list);
 
         try {
-            adapter = new UserListAdapter(this.getContext(), HubApplication._().getDatabaseHandle());
+            adapter = new DomainUserListAdapter(this.getContext(), HubApplication._().getDatabaseHandle(), domainId);
             list.setAdapter(adapter);
-            list.setOnItemClickListener(this);
         } catch (DatabaseUnavailableException e) {
             e.printStackTrace();
             //TODO: Draw a different view here
         }
         return rootView;
+    }
+
+    @Override
+    public void receiveBroadcast(HubEventBroadcast b) {
+        if(b instanceof MobileUserModelBroadcast) {
+            MobileUserModelBroadcast userBroadcast = (MobileUserModelBroadcast)b;
+            if(userBroadcast.getDomainId() == this.domainId && userBroadcast.getEventType() == HubEventBroadcast.EventType.Addition) {
+                adapter.notifyDataSetChanged();
+            }
+        }
+    }
+
+    private void updateIfItemExists(int manifestId) {
+        for (int i = list.getFirstVisiblePosition(); i < list.getLastVisiblePosition(); ++i) {
+            if((int)list.getItemIdAtPosition(i) == manifestId) {
+                adapter.updateViewFor(manifestId);
+            }
+        }
     }
 
     @Override
@@ -82,40 +116,5 @@ public class DomainUsersFragment extends Fragment implements AddUserDialogFragme
 
     private ActionBar getActionBar() {
         return ((AppCompatActivity)getActivity()).getSupportActionBar();
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_new_user) {
-            AddUserDialogFragment fragment = new AddUserDialogFragment();
-            fragment.attachDetails(null, this);
-            fragment.show(((FragmentActivity)activity).getSupportFragmentManager(), "user_dialog");
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onFinishEditDialog(SyncableUser user) {
-        SQLiteDatabase database = HubApplication._().getDatabaseHandle();
-        user.writeToDb(database);
-        adapter.update();
-        database.close();
-    }
-
-    @Override
-    public void removeUser(SyncableUser user) {
-        SQLiteDatabase database = HubApplication._().getDatabaseHandle();
-        user.removeFromDb(database);
-        adapter.update();
-        database.close();
-    }
-
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        AddUserDialogFragment fragment = new AddUserDialogFragment();
-        fragment.attachDetails(adapter.getItem(position), this);
-        fragment.show(((FragmentActivity)activity).getSupportFragmentManager(), "user_dialog");
     }
 }

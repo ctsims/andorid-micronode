@@ -32,7 +32,7 @@ public class AppUtils {
         return apps;
     } finally {
             c.close();
-            db.close();
+            //db.close();
         }
 
     }
@@ -43,7 +43,7 @@ public class AppUtils {
         try {
             return AppAssetModel.getRow(appId, db);
         } finally {
-            db.close();
+            //db.close();
         }
     }
 }

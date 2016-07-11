@@ -48,9 +48,9 @@ public class AppSyncThread extends HubRunnable{
 
     public void runInternal() throws DatabaseUnavailableException {
         SQLiteDatabase database = HubApplication._().getDatabaseHandle();
+        Cursor c = database.query(AppAssetModel.TABLE_NAME, null, null, null, null, null, null);
 
         try {
-            Cursor c = database.query(AppAssetModel.TABLE_NAME, null, null, null, null, null, null);
             AppAssetModel actionable = null;
             for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
                 AppAssetModel app = AppAssetModel.fromDb(c);
@@ -59,7 +59,6 @@ public class AppSyncThread extends HubRunnable{
                     actionable = app;
                 }
             }
-            c.close();
 
             if (actionable == null) {
                 return;
@@ -75,7 +74,8 @@ public class AppSyncThread extends HubRunnable{
             }
 
         } finally {
-             database.close();
+            c.close();
+            //database.close();
         }
 
     }

@@ -42,6 +42,7 @@ public class HubApplication extends Application {
 
         //Make DB create code execute synchronously
         getDatabaseHandle().close();
+        databaseCache = null;
 
         createServiceConnectors();
     }
@@ -59,11 +60,14 @@ public class HubApplication extends Application {
         return singleton;
     }
 
+    SQLiteDatabase databaseCache;
     public SQLiteDatabase getDatabaseHandle() throws DatabaseUnavailableException {
         SQLiteDatabase database;
         try {
-            database = new DatabaseOpenHelper(this).getWritableDatabase("password");
-            return database;
+            if(databaseCache == null) {
+                databaseCache = new DatabaseOpenHelper(this).getWritableDatabase("password");
+            }
+            return databaseCache;
         } catch (SQLiteException e) {
             e.printStackTrace();
             ServicesMonitor.reportMessage("Failed to open local database : " + e.getMessage());

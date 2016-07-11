@@ -33,8 +33,8 @@ public class UserSyncThread extends HubRunnable {
     public void runInternal() throws DatabaseUnavailableException {
         SQLiteDatabase database = HubApplication._().getDatabaseHandle();
 
+        Cursor c = database.query("SyncableUser", null, null, null, null, null, null);
         try {
-            Cursor c = database.query("SyncableUser", null, null, null, null, null, null);
             SyncableUser actionable = null;
             for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
                 SyncableUser u = SyncableUser.fromDb(c);
@@ -45,7 +45,6 @@ public class UserSyncThread extends HubRunnable {
                     break;
                 }
             }
-            c.close();
 
 
             if (actionable == null) {
@@ -59,7 +58,7 @@ public class UserSyncThread extends HubRunnable {
             }
 
         } finally {
-             database.close();
+            c.close();
         }
 
     }

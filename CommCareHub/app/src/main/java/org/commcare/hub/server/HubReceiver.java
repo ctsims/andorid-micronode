@@ -129,7 +129,7 @@ public class HubReceiver extends NanoHTTPD {
                 }
             }
             c.close();
-            database.close();
+            //database.close();
             if(toReturn != null) {
                 return toReturn;
             }
