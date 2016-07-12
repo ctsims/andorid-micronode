@@ -106,6 +106,9 @@ public class DomainUserListAdapter extends CursorAdapter
     @Override
     public void bindView(View view, Context context, android.database.Cursor cursor) {
         final int modelId = cursor.getInt(cursor.getColumnIndexOrThrow("_id"));
+        final int domainId = cursor.getInt(cursor.getColumnIndexOrThrow("domain_id"));
+
+        final String fullUsername = cursor.getString(cursor.getColumnIndexOrThrow("username"));
 
         viewMapper.put(modelId, new Pair<>(cursor.getPosition(), view));
 
@@ -138,7 +141,7 @@ public class DomainUserListAdapter extends CursorAdapter
         downloadButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //DbUtil.requestManifestAsset(database, manifestId, version, url);
+                DbUtil.requestUserSyncData(database, modelId,fullUsername, domainId );
             }
         });
     }

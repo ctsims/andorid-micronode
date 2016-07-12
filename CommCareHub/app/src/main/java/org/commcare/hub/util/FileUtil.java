@@ -1,5 +1,6 @@
 package org.commcare.hub.util;
 
+import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 
@@ -10,6 +11,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
@@ -31,7 +33,6 @@ public class FileUtil {
     public static String path(String relativeSubDir) {
         return new File(storageRoot(), relativeSubDir).getAbsolutePath();
     }
-
 
     public static String storageRoot() {
         return Environment.getExternalStorageDirectory().toString() + "/Android/data/" +
@@ -113,5 +114,39 @@ public class FileUtil {
     }
 
 
+    public static String getFirstChunkOfFile(String filename, int chunkSize) throws IOException {
+        FileReader fr = new FileReader(filename);
+
+        char[] buf = new char[chunkSize];
+        int pos = 0;
+
+        for (;;) {
+            int nRead = fr.read(buf, pos, chunkSize - pos);
+            if (nRead == -1) {
+                if (pos > 0) {
+                    return new String(buf);
+                }
+                break;
+            }
+            pos += nRead;
+            if (pos == chunkSize) {
+                return new String(buf);
+            }
+        }
+        throw new IOException("Didn't read the correct amount of input file " + filename);
+    }
+
+    public static void configureFileLocations() {
+        File storageRoot = new File(storageRoot());
+        if(!storageRoot.exists()) {
+            storageRoot.mkdir();
+        }
+        for(String root : FileUtil.fileRoots) {
+            File f = new File(FileUtil.path(root));
+            if (!f.exists()) {
+                f.mkdirs();
+            }
+        }
+    }
 }
 

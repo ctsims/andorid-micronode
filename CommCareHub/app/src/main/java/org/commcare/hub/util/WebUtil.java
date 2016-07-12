@@ -1,6 +1,7 @@
 package org.commcare.hub.util;
 
 import android.content.Context;
+import android.support.v4.util.Pair;
 import android.util.Base64;
 
 import org.commcare.hub.mirror.SyncableUser;
@@ -21,12 +22,23 @@ import java.util.UUID;
  * Created by ctsims on 2/11/2016.
  */
 public class WebUtil {
+
     public static void setupGetConnection(HttpURLConnection con) throws IOException {
+        setupGetConnection(con, null);
+    }
+
+    public static void setupGetConnection(HttpURLConnection con, Pair<String, String> credentials) throws IOException {
         con.setConnectTimeout(CONNECTION_TIMEOUT);
         con.setReadTimeout(CONNECTION_SO_TIMEOUT);
         con.setRequestMethod("GET");
         con.setDoInput(true);
         con.setInstanceFollowRedirects(true);
+
+        if(credentials != null) {
+            con.setRequestProperty("Authorization", "basic " +
+                    Base64.encodeToString((credentials.first + ":" + credentials.second).getBytes(), Base64.DEFAULT));
+        }
+
     }
 
     /**

@@ -91,10 +91,7 @@ public class DomainSyncThread extends HubRunnable {
             URL url = new URL(uri);
             HttpURLConnection conn = (HttpURLConnection)url.openConnection();
 
-            conn.setRequestProperty("Authorization", "basic " +
-                    Base64.encodeToString((credentials.first + ":" + credentials.second).getBytes(), Base64.DEFAULT));
-
-            WebUtil.setupGetConnection(conn);
+            WebUtil.setupGetConnection(conn, credentials);
 
             int response = conn.getResponseCode();
 

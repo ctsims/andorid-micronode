@@ -38,22 +38,13 @@ public class HubApplication extends Application {
         super.onCreate();
         singleton = this;
         SQLiteDatabase.loadLibs(this);
-        configureFileLocations();
+        FileUtil.configureFileLocations();
 
         //Make DB create code execute synchronously
         getDatabaseHandle().close();
         databaseCache = null;
 
         createServiceConnectors();
-    }
-
-    public static void configureFileLocations() {
-        for(String root : FileUtil.fileRoots) {
-            File f = new File(FileUtil.path(root));
-            if (!f.exists()) {
-                f.mkdirs();
-            }
-        }
     }
 
     public static HubApplication _() {

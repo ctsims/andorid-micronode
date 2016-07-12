@@ -52,7 +52,7 @@ public class AddUserDialogFragment extends DialogFragment {
         if(user != null) {
             mUsername.setText(user.getUsername());
             mDomain.setText(user.getDomain());
-            mPassword.setText(user.getPassword());
+            mPassword.setText(user.getPasswordHash());
 
         }
 
@@ -84,11 +84,11 @@ public class AddUserDialogFragment extends DialogFragment {
             public void onClick(View v) {
                 if (user == null) {
                     user = new SyncableUser(mUsername.getText().toString(), mDomain.getText().toString());
-                    user.setPassword(mPassword.getText().toString());
+                    user.setPasswordHash(mPassword.getText().toString());
                 } else {
                     user.setUsername(mUsername.getText().toString());
                     user.setDomain(mDomain.getText().toString());
-                    user.setPassword(mPassword.getText().toString());
+                    user.setPasswordHash(mPassword.getText().toString());
 
                     if(user.getStatus() == SyncableUser.UserStatus.AuthError) {
                         user.updateStatus(SyncableUser.UserStatus.Requested);

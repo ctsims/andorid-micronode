@@ -1,11 +1,16 @@
 package org.commcare.hub;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -25,11 +30,14 @@ import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.server.ServerService;
 import org.commcare.hub.ui.ManagedAppsFragment;
 import org.commcare.hub.ui.UsersFragment;
+import org.commcare.hub.util.FileUtil;
 
 import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationDrawerFragment.NavigationDrawerCallbacks {
+
+    private static final int PERMISSION_REQUEST_EXTERNAL_STORAGE = 1;
 
     /**
      * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
@@ -56,7 +64,36 @@ public class MainActivity extends AppCompatActivity
         mNavigationDrawerFragment.setUp(
                 R.id.navigation_drawer,
                 (DrawerLayout)findViewById(R.id.drawer_layout));
+
+        setupPermissions();
     }
+
+    private void setupPermissions() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+
+                    // Show an expanation to the user *asynchronously* -- don't block
+                    // this thread waiting for the user's response! After the user
+                    // sees the explanation, try again to request the permission.
+
+                } else {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                            PERMISSION_REQUEST_EXTERNAL_STORAGE);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult (int requestCode, String[] permissions,  int[] grantResults) {
+        FileUtil.configureFileLocations();
+    }
+
 
     @Override
     public void onNavigationDrawerItemSelected(int position) {

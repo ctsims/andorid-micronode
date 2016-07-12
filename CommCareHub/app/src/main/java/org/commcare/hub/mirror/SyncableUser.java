@@ -63,12 +63,12 @@ public class SyncableUser {
         this.keyFile = keyFile;
     }
 
-    public String getPassword() {
+    public String getPasswordHash() {
         return password;
     }
 
-    public void setPassword(String password) {
-        this.password = password;
+    public void setPasswordHash(String passwordHash) {
+        this.password = passwordHash;
     }
 
     public String getKeyRecord() {
@@ -101,8 +101,8 @@ public class SyncableUser {
         this.lastUpdate = new Date();
     }
 
-    public static SyncableUser fromDb(int id) {
-        return null;
+    public void setRetry() {
+        this.status = UserStatus.Requested;
     }
 
 

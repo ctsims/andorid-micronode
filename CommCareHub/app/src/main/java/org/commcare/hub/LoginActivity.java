@@ -49,7 +49,7 @@ public class LoginActivity extends AppCompatActivity {
     private void loadDefaultValues() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         ((EditText)this.findViewById(R.id.edit_username)).setText(preferences.getString(KEY_USERNAME, "csims@dimagi.com"));
-        ((EditText)this.findViewById(R.id.edit_password)).setText(preferences.getString(KEY_PASSWORD, "LI7dCSr4qrVDQktKBuNb"));
+        ((EditText)this.findViewById(R.id.edit_password)).setText(preferences.getString(KEY_PASSWORD, "h3dqB0QojxwyjVfz37NS"));
     }
 
 

@@ -1,6 +1,7 @@
 package org.commcare.hub.mirror;
 
 import android.content.Context;
+import android.support.v4.util.Pair;
 import android.util.Base64;
 
 import net.sqlcipher.Cursor;
@@ -10,14 +11,20 @@ import org.commcare.hub.application.HubApplication;
 import org.commcare.hub.database.DatabaseUnavailableException;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.services.HubRunnable;
+import org.commcare.hub.util.FileUtil;
 import org.commcare.hub.util.StreamsUtil;
+import org.commcare.hub.util.WebUtil;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Authenticator;
 import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
 import java.net.URL;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -46,7 +53,6 @@ public class UserSyncThread extends HubRunnable {
                 }
             }
 
-
             if (actionable == null) {
                 return;
             }
@@ -54,7 +60,11 @@ public class UserSyncThread extends HubRunnable {
             if (actionable.getStatus() == SyncableUser.UserStatus.Requested) {
                 fetchKeyForUser(actionable, database);
             } else if(actionable.getStatus() == SyncableUser.UserStatus.KeysFetched) {
-                fetchModelForUser(actionable, database);
+                try {
+                    fetchModelForUser(actionable, database);
+                } catch(IOException ioe) {
+                    ServicesMonitor.reportMessage("Error fetching user model for " + actionable.getUsername()+ " - " + ioe.getMessage());
+                }
             }
 
         } finally {
@@ -65,17 +75,30 @@ public class UserSyncThread extends HubRunnable {
 
     //HttpURLConnection
 
-    private void fetchModelForUser(SyncableUser actionable, SQLiteDatabase database) {
-        String template = "https://www.commcarehq.org/a/" +actionable.getDomain() + "/phone/restore/?version=2.0";
+    private void fetchModelForUser(SyncableUser actionable, SQLiteDatabase database) throws IOException{
+        String template = "https://www.commcarehq.org/hq/admin/phone/restore/?version=2.0&raw=true&as=" + actionable.getUsername();
         String syncLocation = fetchForUser(template, actionable, database);
         if(syncLocation != null) {
             actionable.setSyncFile(syncLocation);
+            String passwordHash = processSyncFileForPassword(syncLocation);
+            actionable.setPasswordHash(passwordHash);
             actionable.updateStatus(SyncableUser.UserStatus.ModelFetched);
             actionable.writeToDb(database);
 
             ServicesMonitor.reportMessage("Sync record fetch successful for " + actionable.getUsername());
         }
 
+    }
+
+    private String processSyncFileForPassword(String syncLocation) throws IOException {
+        Pattern p = Pattern.compile("(sha1\\$[^<]*)<");
+        String chunk = FileUtil.getFirstChunkOfFile(syncLocation, 300);
+        Matcher m = p.matcher(chunk);
+        if(m.find()) {
+            return m.group(1);
+        } else {
+            throw new IOException("Didn't find sync pw in user restore");
+        }
     }
 
     private void fetchKeyForUser(final SyncableUser actionable, SQLiteDatabase database) {
@@ -94,19 +117,21 @@ public class UserSyncThread extends HubRunnable {
         try {
             URL url = new URL(template);
 
-            final String fullUsername =
-                    actionable.getUsername() + "@" + actionable.getDomain() + ".commcarehq.org";
+            final Pair<String, String> credentials = HubApplication._().getCredentials();
+
+            Authenticator.setDefault(new Authenticator() {
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(credentials.first, credentials.second.toCharArray());
+                }
+            });
 
 
             HttpURLConnection conn = (HttpURLConnection)url.openConnection();
-            setupGetConnection(conn);
-
-            conn.setRequestProperty("Authorization", "basic " +
-                    Base64.encodeToString((fullUsername + ":" + actionable.getPassword()).getBytes(), Base64.DEFAULT));
+            WebUtil.setupGetConnection(conn, credentials);
 
             int response = conn.getResponseCode();
 
-            ServicesMonitor.reportMessage("HTTP Record Request for " + fullUsername +  " response code: " + response);
+            ServicesMonitor.reportMessage("HTTP Record Request for " + actionable.getUsername() +  " response code: " + response);
 
             if(response >= 500) {
                 actionable.updateStatus(SyncableUser.UserStatus.AuthError);
@@ -139,26 +164,6 @@ public class UserSyncThread extends HubRunnable {
         }
         return null;
     }
-
-
-
-    private static void setupGetConnection(HttpURLConnection con) throws IOException {
-        con.setConnectTimeout(CONNECTION_TIMEOUT);
-        con.setReadTimeout(CONNECTION_SO_TIMEOUT);
-        con.setRequestMethod("GET");
-        con.setDoInput(true);
-        con.setInstanceFollowRedirects(true);
-    }
-
-    /**
-     * How long to wait when opening network connection in milliseconds
-     */
-    public static final int CONNECTION_TIMEOUT = 2 * 60 * 1000;
-
-    /**
-     * How long to wait when receiving data (in milliseconds)
-     */
-    public static final int CONNECTION_SO_TIMEOUT = 1 * 60 * 1000;
 
 
 }

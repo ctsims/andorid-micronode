@@ -11,6 +11,9 @@ import org.commcare.hub.mirror.SyncableUser;
 import org.commcare.hub.util.StreamsUtil;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
@@ -122,9 +125,9 @@ public class HubReceiver extends NanoHTTPD {
             for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
                 SyncableUser u = SyncableUser.fromDb(c);
 
-                String testUsername = u.getUsername() + "@" + u.getDomain() + ".commcarehq.org";
+                String testUsername = u.getUsername();
 
-                if(testUsername.equals(username) && u.getPassword().equals(components[1])) {
+                if(testUsername.equals(username) && comparePasswordHashes(u.getPasswordHash(),components[1])) {
                     toReturn = u;
                 }
             }
@@ -135,6 +138,30 @@ public class HubReceiver extends NanoHTTPD {
             }
         }
         throw new AuthRequiredException();
+    }
+
+    public boolean comparePasswordHashes(String passwordHash, String passwordAttempt) {
+        try {
+            if (passwordHash.contains("$")) {
+                String alg = "sha1";
+                String salt = passwordHash.split("\\$")[1];
+                String check = passwordHash.split("\\$")[2];
+                MessageDigest md = MessageDigest.getInstance("SHA-1");
+                BigInteger number = new BigInteger(1, md.digest((salt + passwordAttempt).getBytes()));
+                String hashed = number.toString(16);
+
+                while (hashed.length() < check.length()) {
+                    hashed = "0" + hashed;
+                }
+                if (passwordHash.equals(alg + "$" + salt + "$" + hashed)) {
+                    return true;
+                }
+                return false;
+            }
+            return false;
+        }catch(NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String getBasicCredsString(IHTTPSession session) {

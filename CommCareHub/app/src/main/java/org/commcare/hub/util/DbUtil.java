@@ -12,6 +12,9 @@ import net.sqlcipher.database.SQLiteException;
 import org.commcare.hub.application.HubApplication;
 import org.commcare.hub.apps.AppAssetBroadcast;
 import org.commcare.hub.apps.AppAssetModel;
+import org.commcare.hub.apps.MobileUserModelBroadcast;
+import org.commcare.hub.domain.DomainSyncThread;
+import org.commcare.hub.events.HubEventBroadcast;
 import org.commcare.hub.mirror.SyncableUser;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.services.HubService;
@@ -70,7 +73,7 @@ public class DbUtil {
     }
 
     public static List<SyncableUser> getSyncableUserForWebUser(SQLiteDatabase db, int webUserID) {
-        Cursor c = db.query(SyncableUser.TABLE_NAME, null, "username = (? + 0)", new String[] {String.valueOf(webUserID)}, null, null, null);
+        Cursor c = db.query(SyncableUser.TABLE_NAME, null, "mobile_user_id = (? + 0)", new String[] {String.valueOf(webUserID)}, null, null, null);
         try {
             ArrayList<SyncableUser> models = new ArrayList();
 
@@ -106,8 +109,47 @@ public class DbUtil {
             HubApplication._().getServiceHost().broadcast(new AppAssetBroadcast(manifestId));
         }finally {
             db.endTransaction();
-
-
         }
     }
+
+    public static final String getDomainGuidFromId(SQLiteDatabase db, int domainId) {
+        Cursor c = db.query(DomainSyncThread.TABLE_DOMAIN_LIST, new String[] {"domain_guid"}, "id = (? + 0)", new String[] {String.valueOf(domainId)}, null, null, null);
+        String retVal = null;
+        if(c.moveToFirst()) {
+            retVal = c.getString(c.getColumnIndexOrThrow("domain_guid"));
+        }
+        c.close();
+        return retVal;
+    }
+
+    public static void requestUserSyncData(SQLiteDatabase db, int userId, String username, int domainId) {
+        String domainGuid = getDomainGuidFromId(db, domainId);
+
+        db.beginTransaction();
+        try {
+            //If we have any existing app assets for this (installed or not),
+            //we can skip the download
+            for (SyncableUser model : getSyncableUserForWebUser(db, userId) ){
+                if(model.getStatus() == SyncableUser.UserStatus.AuthError) {
+                    model.setRetry();
+                    model.writeToDb(db);
+                }
+                else {
+                    ServicesMonitor.reportMessage("Already have userdata for user");
+                    db.setTransactionSuccessful();
+                    return;
+                }
+            }
+
+            SyncableUser user = new SyncableUser(username, domainGuid);
+            user.writeToDb(db);
+            ServicesMonitor.reportMessage("Creating request for user sync: " + username);
+
+            db.setTransactionSuccessful();
+            HubApplication._().getServiceHost().broadcast(new MobileUserModelBroadcast(domainId, userId, HubEventBroadcast.EventType.Update));
+        }finally {
+            db.endTransaction();
+        }
+    }
+
 }

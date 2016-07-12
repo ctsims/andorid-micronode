@@ -29,7 +29,7 @@ public abstract class HubRunnable<T extends HubThreadService> implements Runnabl
             try {
                 runInternal();
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
             try {
                 Thread.sleep(POLL_DELAY);
