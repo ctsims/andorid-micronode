@@ -38,7 +38,7 @@ public class ManifestApi {
             JSONObject appJson = new JSONObject();
             appJson.put("version", app.getVersion());
             appJson.put("name", app.getAppName());
-            appJson.put("app_id", app.getAppManifestId());
+            appJson.put("app_id", app.getAppManifestGuid());
             appJson.put("download_url", app.getSourceUri());
             appJson.put("profile_url", AppDownloadApi.getProfileURI(apiRoot, app));
 
