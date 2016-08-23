@@ -76,7 +76,9 @@ public class UserSyncThread extends HubRunnable {
     //HttpURLConnection
 
     private void fetchModelForUser(SyncableUser actionable, SQLiteDatabase database) throws IOException{
-        String template = "https://www.commcarehq.org/hq/admin/phone/restore/?version=2.0&raw=true&as=" + actionable.getUsername();
+
+        String template = "https://www.commcarehq.org/a/" + actionable.getDomain() + "/phone/admin_restore/?raw=true&as=" + actionable.getUsername();
+
         String syncLocation = fetchForUser(template, actionable, database);
         if(syncLocation != null) {
             actionable.setSyncFile(syncLocation);
@@ -102,7 +104,9 @@ public class UserSyncThread extends HubRunnable {
     }
 
     private void fetchKeyForUser(final SyncableUser actionable, SQLiteDatabase database) {
-        String template = "https://www.commcarehq.org/a/" +actionable.getDomain() + "/phone/keys/";
+        String template = "https://www.commcarehq.org/a/" +actionable.getDomain() + "/phone/admin_keys/?as=" + actionable.getUsername()
+                + "@" + actionable.getDomain() + ".commcarehq.org";
+
         String keyLocation = fetchForUser(template, actionable, database);
         if(keyLocation != null) {
             actionable.setKeyFile(keyLocation);
