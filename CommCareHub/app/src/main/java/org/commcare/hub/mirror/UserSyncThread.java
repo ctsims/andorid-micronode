@@ -104,8 +104,7 @@ public class UserSyncThread extends HubRunnable {
     }
 
     private void fetchKeyForUser(final SyncableUser actionable, SQLiteDatabase database) {
-        String template = "https://www.commcarehq.org/a/" +actionable.getDomain() + "/phone/admin_keys/?as=" + actionable.getUsername()
-                + "@" + actionable.getDomain() + ".commcarehq.org";
+        String template = "https://www.commcarehq.org/a/" +actionable.getDomain() + "/phone/admin_keys/?as=" + actionable.getUsername();
 
         String keyLocation = fetchForUser(template, actionable, database);
         if(keyLocation != null) {
