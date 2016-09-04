@@ -35,6 +35,7 @@ import java.net.URL;
 public class DomainSyncThread extends HubRunnable {
     Context context;
     SQLiteDatabase db;
+    private boolean domainsSynced = false;
 
     public static final String TABLE_DOMAIN_LIST = "DomainList";
 
@@ -42,9 +43,19 @@ public class DomainSyncThread extends HubRunnable {
         this.context = context;
     }
 
+    @Override
     public void runInternal() throws DatabaseUnavailableException {
         db = HubApplication._().getDatabaseHandle();
         Pair<String, Integer> domainData = null;
+
+        if(!domainsSynced){
+            try{
+                fetchDomainList();
+                domainsSynced = true;
+            }catch(Exception e){
+                ServicesMonitor.reportMessage(e.getMessage());
+            }
+        }
 
         Cursor c = db.query(TABLE_DOMAIN_LIST, new String[]{"domain_guid", "id", "pending_sync_request"}, "pending_sync_request != ?", new String[] {"synced"}, null, null, null);
         try {
@@ -85,8 +96,6 @@ public class DomainSyncThread extends HubRunnable {
             }
         });
 
-
-
         try {
             URL url = new URL(uri);
             HttpURLConnection conn = (HttpURLConnection)url.openConnection();
@@ -116,6 +125,24 @@ public class DomainSyncThread extends HubRunnable {
         }
     }
 
+    private void fetchDomainList() throws ProcessingException, InvalidConfigException{
+        String domainEndpoint = "https://staging.commcarehq.org/hq/admin/web_user_data/";
+        JSONObject domains = fetch(domainEndpoint);
+
+        try{
+            JSONArray domainList = domains.getJSONArray("domains");
+            for(int i = 0; i < domainList.length(); i++){
+                String domainName = domainList.getString(i);
+                ContentValues cv = new ContentValues();
+                cv.put("domain_guid", domainName);
+                cv.put("pending_sync_request", "apps");
+                db.insert(TABLE_DOMAIN_LIST, null, cv);
+            }
+        }catch(JSONException e){
+            throw new ProcessingException(e.getMessage());
+        }
+    }
+
 
     private void fetchAndSyncUsers(Pair<String, Integer> domainData) throws ProcessingException, InvalidConfigException {
         String guid = domainData.first;
@@ -124,8 +151,9 @@ public class DomainSyncThread extends HubRunnable {
 
         while(nextQuery != null) {
             try {
-                String uri = WebUtil.getAPIRoot() + "a/" + domainData.first +
+                String uri = "https://staging.commcarehq.org/" + "a/" + domainData.first +
                         "/api/v0.4/user/" + nextQuery;
+
                 Pair<String, JSONArray> results = parseTastyPieResult(fetch(uri));
 
                 JSONArray list = results.second;
@@ -183,8 +211,7 @@ public class DomainSyncThread extends HubRunnable {
 
     private void fetchAndSyncApps(Pair<String, Integer> domainData) throws ProcessingException, InvalidConfigException {
         String guid = domainData.first;
-
-        String template = "https://www.commcarehq.org/a/" + guid + "/apps/api/list_apps/";
+        String template = "https://staging.commcarehq.org/a/" + guid + "/apps/api/list_apps/";
 
         JSONObject data = fetch(template);
 
