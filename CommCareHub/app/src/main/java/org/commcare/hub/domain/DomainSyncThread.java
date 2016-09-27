@@ -211,7 +211,7 @@ public class DomainSyncThread extends HubRunnable {
 
     private void fetchAndSyncApps(Pair<String, Integer> domainData) throws ProcessingException, InvalidConfigException {
         String guid = domainData.first;
-        String template = "https://staging.commcarehq.org/a/" + guid + "/apps/api/list_apps/";
+        String template = "https://commcarehq.org/a/" + guid + "/apps/api/list_apps/";
 
         JSONObject data = fetch(template);
 
