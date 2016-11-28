@@ -2,7 +2,6 @@ package org.commcare.hub.mirror;
 
 import android.content.Context;
 import android.support.v4.util.Pair;
-import android.util.Base64;
 
 import net.sqlcipher.Cursor;
 import net.sqlcipher.database.SQLiteDatabase;
@@ -11,11 +10,11 @@ import org.commcare.hub.application.HubApplication;
 import org.commcare.hub.database.DatabaseUnavailableException;
 import org.commcare.hub.monitor.ServicesMonitor;
 import org.commcare.hub.services.HubRunnable;
-import org.commcare.hub.util.FileUtil;
 import org.commcare.hub.util.StreamsUtil;
 import org.commcare.hub.util.WebUtil;
-
+import org.apache.commons.io.IOUtils;
 import java.io.BufferedInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Authenticator;
@@ -38,6 +37,7 @@ public class UserSyncThread extends HubRunnable {
     }
 
     public void runInternal() throws DatabaseUnavailableException {
+
         SQLiteDatabase database = HubApplication._().getDatabaseHandle();
 
         Cursor c = database.query("SyncableUser", null, null, null, null, null, null);
@@ -76,7 +76,9 @@ public class UserSyncThread extends HubRunnable {
     //HttpURLConnection
 
     private void fetchModelForUser(SyncableUser actionable, SQLiteDatabase database) throws IOException{
-        String template = "https://www.commcarehq.org/hq/admin/phone/restore/?version=2.0&raw=true&as=" + actionable.getUsername();
+
+        String template = "https://www.commcarehq.org/a/" + actionable.getDomain() + "/phone/admin_restore/?raw=true&as=" + actionable.getUsername();
+
         String syncLocation = fetchForUser(template, actionable, database);
         if(syncLocation != null) {
             actionable.setSyncFile(syncLocation);
@@ -87,22 +89,25 @@ public class UserSyncThread extends HubRunnable {
 
             ServicesMonitor.reportMessage("Sync record fetch successful for " + actionable.getUsername());
         }
-
     }
 
     private String processSyncFileForPassword(String syncLocation) throws IOException {
         Pattern p = Pattern.compile("(sha1\\$[^<]*)<");
-        String chunk = FileUtil.getFirstChunkOfFile(syncLocation, 300);
+        FileInputStream stream = context.openFileInput(syncLocation);
+        String chunk = IOUtils.toString(stream);
         Matcher m = p.matcher(chunk);
+
         if(m.find()) {
-            return m.group(1);
+            String obj = m.group(1);
+            return obj;
         } else {
             throw new IOException("Didn't find sync pw in user restore");
         }
     }
 
     private void fetchKeyForUser(final SyncableUser actionable, SQLiteDatabase database) {
-        String template = "https://www.commcarehq.org/a/" +actionable.getDomain() + "/phone/keys/";
+        String template = "https://www.commcarehq.org/a/" +actionable.getDomain() + "/phone/admin_keys/?as=" + actionable.getUsername();
+
         String keyLocation = fetchForUser(template, actionable, database);
         if(keyLocation != null) {
             actionable.setKeyFile(keyLocation);
