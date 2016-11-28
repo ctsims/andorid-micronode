@@ -126,7 +126,7 @@ public class DomainSyncThread extends HubRunnable {
     }
 
     private void fetchDomainList() throws ProcessingException, InvalidConfigException{
-        String domainEndpoint = "https://staging.commcarehq.org/hq/admin/web_user_data/";
+        String domainEndpoint = "https://www.commcarehq.org/hq/admin/web_user_data/";
         JSONObject domains = fetch(domainEndpoint);
 
         try{
@@ -151,7 +151,7 @@ public class DomainSyncThread extends HubRunnable {
 
         while(nextQuery != null) {
             try {
-                String uri = "https://staging.commcarehq.org/" + "a/" + domainData.first +
+                String uri = "https://www.commcarehq.org/" + "a/" + domainData.first +
                         "/api/v0.4/user/" + nextQuery;
 
                 Pair<String, JSONArray> results = parseTastyPieResult(fetch(uri));
