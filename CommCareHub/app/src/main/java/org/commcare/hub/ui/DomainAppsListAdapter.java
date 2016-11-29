@@ -120,9 +120,9 @@ public class DomainAppsListAdapter extends CursorAdapter
 
         ((TextView)view.findViewById(R.id.av_title)).setText(cursor.getString(cursor.getColumnIndexOrThrow("app_descriptor")));
 
-        ((TextView)view.findViewById(R.id.av_build_number)).setText("Latest Build: " + version);
-
         ImageButton downloadButton = (ImageButton)view.findViewById(R.id.av_button);
+
+        int installedVersion = -1;
         int newImageId = R.drawable.btn_icon_download;
         downloadButton.setClickable(true);
         new_id_fetch:
@@ -134,11 +134,25 @@ public class DomainAppsListAdapter extends CursorAdapter
                     downloadButton.setClickable(false);
                     break new_id_fetch;
                 case Processed:
+                    if(installedVersion < asset.getVersion()) {
+                        installedVersion = asset.getVersion();
+                    }
                     newImageId = R.drawable.btn_icon_check;
                     downloadButton.setClickable(false);
                     break;
             }
         }
+
+        String versionMsg = "Latest Build: " + version;
+        if(installedVersion > 0) {
+            if(version == installedVersion) {
+                versionMsg += " | Up to Date";
+            } else {
+                versionMsg += " | Currently Downloaded: " + installedVersion;
+            }
+        }
+
+        ((TextView)view.findViewById(R.id.av_build_number)).setText(versionMsg);
 
 
         downloadButton.setImageResource(newImageId);

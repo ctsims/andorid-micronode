@@ -9,6 +9,7 @@
     <string name="navigation_drawer_close">Close navigation drawer</string>
 
     <string name="action_new_user">New User</string>
+    <string name="action_refresh">Refresh</string>
 
     <string name="action_settings">Settings</string>
 

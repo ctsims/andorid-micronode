@@ -103,7 +103,6 @@ public class DomainUsersFragment extends Fragment implements HubBroadcastListene
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         // If the drawer is open, show the global app actions in the action bar. See also
         // showGlobalContextActionBar, which controls the top-left area of the action bar.
-        inflater.inflate(R.menu.users, menu);
         showGlobalContextActionBar();
         super.onCreateOptionsMenu(menu, inflater);
     }

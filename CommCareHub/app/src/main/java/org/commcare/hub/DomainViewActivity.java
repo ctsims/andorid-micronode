@@ -1,5 +1,6 @@
 package org.commcare.hub;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.BaseColumns;
@@ -26,9 +27,12 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import net.sqlcipher.database.SQLiteDatabase;
+
 import org.commcare.hub.application.HubApplication;
 import org.commcare.hub.apps.AppAssetBroadcast;
 import org.commcare.hub.apps.AppAssetModel;
+import org.commcare.hub.domain.DomainSyncThread;
 import org.commcare.hub.events.HubActivity;
 import org.commcare.hub.events.HubEventBroadcast;
 import org.commcare.hub.ui.DomainAppsFragment;
@@ -145,7 +149,19 @@ public class DomainViewActivity extends HubActivity {
             return true;
         }
 
+        if (id == R.id.action_refresh) {
+            requestDomainRefresh();
+        }
+
         return super.onOptionsItemSelected(item);
+    }
+
+    private void requestDomainRefresh() {
+        SQLiteDatabase db = HubApplication._().getDatabaseHandle();
+        ContentValues cv = new ContentValues();
+        cv.put("pending_sync_request", "apps");
+
+        db.update(DomainSyncThread.TABLE_DOMAIN_LIST, cv, "id = ?", new String[]{String.valueOf(domainId)});
     }
 
     public Bundle getDomainArguments() {
