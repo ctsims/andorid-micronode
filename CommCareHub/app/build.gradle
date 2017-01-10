@@ -32,7 +32,7 @@ android {
 
         buildConfigField "String", "DEFAULT_USERNAME", "\"${project.ext.DEFAULT_USERNAME}\""
         buildConfigField "String", "DEFAULT_PASSWORD", "\"${project.ext.DEFAULT_PASSWORD}\""
-
+        buildConfigField "String", "BUILD_NUMBER", "\"" + getVersionCode() + "\""        
     }
 
     signingConfigs {
@@ -48,6 +48,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
