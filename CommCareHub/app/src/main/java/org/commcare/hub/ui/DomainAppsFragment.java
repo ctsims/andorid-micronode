@@ -80,7 +80,8 @@ public class DomainAppsFragment extends Fragment implements AdapterView.OnItemCl
     private void updateIfItemExists(int manifestId) {
         for (int i = list.getFirstVisiblePosition(); i < list.getLastVisiblePosition(); ++i) {
             if((int)list.getItemIdAtPosition(i) == manifestId) {
-                adapter.updateViewFor(manifestId);
+                adapter.update();
+                //adapter.updateViewFor(manifestId);
             }
         }
     }

@@ -2,6 +2,7 @@ package org.commcare.hub.domain;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.support.annotation.BoolRes;
 import android.support.v4.util.Pair;
 import android.util.Base64;
 
@@ -9,6 +10,7 @@ import net.sqlcipher.Cursor;
 import net.sqlcipher.database.SQLiteDatabase;
 
 import org.commcare.hub.application.HubApplication;
+import org.commcare.hub.apps.AppAssetBroadcast;
 import org.commcare.hub.apps.MobileUserModelBroadcast;
 import org.commcare.hub.database.DatabaseUnavailableException;
 import org.commcare.hub.events.HubEventBroadcast;
@@ -239,6 +241,13 @@ public class DomainSyncThread extends HubRunnable {
         cv.put("version", application.getString("version"));
         cv.put("download_url", application.getString("download_url"));
 
-        DbUtil.upsertRow(db, DbUtil.TABLE_APP_MANIFEST, cv, "app_guid");
+        Pair<Long, Boolean> result =
+                DbUtil.upsertRow(db, DbUtil.TABLE_APP_MANIFEST, cv, "app_guid");
+
+
+        this.getServiceConnector().queueBroadcast(new AppAssetBroadcast(result.first.intValue()));
+
+
+
     }
 }
