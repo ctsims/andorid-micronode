@@ -7,6 +7,16 @@ ext {
     DEFAULT_USERNAME = project.properties['HUB_DEFAULT_USERNAME'] ?: ""
     DEFAULT_PASSWORD = project.properties['HUB_DEFAULT_PASSWORD'] ?: ""
 
+    RELEASE_STORE_FILE = project.properties['RELEASE_STORE_FILE'] ?: "."
+    RELEASE_STORE_PASSWORD = project.properties['RELEASE_STORE_PASSWORD'] ?: ""
+    RELEASE_KEY_ALIAS = project.properties['RELEASE_KEY_ALIAS'] ?: ""
+    RELEASE_KEY_PASSWORD = project.properties['RELEASE_KEY_PASSWORD'] ?: ""
+    TRUSTED_SOURCE_PUBLIC_KEY = project.properties['TRUSTED_SOURCE_PUBLIC_KEY'] ?:
+            "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHiuy2ULV4pobkuQN2TEjmR1tn" +
+                    "HJ+F335hm/lVdaFQzvBmeq64MUMbumheVLDJaSUiAVzqSHDKJWH01ZQRowqBYjwo" +
+                    "ycVSQSeO2glc6XZZ+CJudAPXe8iFWLQp3kBBnBmVcBXCOQFO7aLgQMv4nqKZsLW0" +
+                    "HaAJkjpnc165Os+aYwIDAQAB";    
+
 }
 
 android {
@@ -17,13 +27,25 @@ android {
         applicationId "org.commcare.hub"
         minSdkVersion 14
         targetSdkVersion 23
-        versionCode 1
+        versionCode getVersionCode()
         versionName "1.0"
 
         buildConfigField "String", "DEFAULT_USERNAME", "\"${project.ext.DEFAULT_USERNAME}\""
         buildConfigField "String", "DEFAULT_PASSWORD", "\"${project.ext.DEFAULT_PASSWORD}\""
 
     }
+
+    signingConfigs {
+        release {
+            storeFile file(project.ext.RELEASE_STORE_FILE)
+            storePassword project.ext.RELEASE_STORE_PASSWORD
+            keyAlias project.ext.RELEASE_KEY_ALIAS
+            keyPassword project.ext.RELEASE_KEY_PASSWORD
+        }
+    }
+
+
+
     buildTypes {
         release {
             minifyEnabled false
@@ -32,6 +54,20 @@ android {
     }
 
 }
+
+
+/**
+ * Get the version code from command line param
+ *
+ * @return int If the param -PversionCode is present then return int value or 1
+ */
+def getVersionCode() {
+    def code = project.hasProperty('versionCode') ? versionCode.toInteger() : 1
+    println "VersionCode is set to $code"
+    return code
+}
+
+
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
